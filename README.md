@@ -2,6 +2,8 @@
 
 Aplicación web para detectar y visualizar graffiti en las calles de Medellín usando modelo YOLOv8 e imágenes geolocalizadas.
 
+prueba online: https://rypsor-street-scan-app-mawxkf.streamlit.app/
+
 ## Requisitos del Sistema
 
 - Python 3.8 o superior
