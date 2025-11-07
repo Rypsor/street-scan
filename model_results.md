@@ -5,8 +5,8 @@
 - **Modelo Base**: YOLOv8s (small)
 - **Tarea**: Detección de objetos
 - **Tamaño de imagen**: 640x640
-- **Épocas totales**: 90
-- **Tiempo total**: 3,602.79 segundos (~1 hora)
+- **Épocas totales**: 398
+- **Tiempo total**: 17,014.1 segundos (~4.7 horas)
 - **Batch size**: Automático (-1)
 - **Optimizador**: Auto
 - **Device**: GPU (Kaggle)
@@ -14,7 +14,7 @@
 ### Hiperparámetros Principales
 
 - Learning rate inicial (lr0): 0.01
-- Learning rate final (lrf): 0.01
+- Learning rate final (lrf): 0.000114438
 - Momentum: 0.937
 - Weight decay: 0.0005
 - Warmup epochs: 3.0
@@ -30,45 +30,43 @@
 
 ## Resultados del Entrenamiento
 
-El modelo completó un total de 90 épocas de entrenamiento, mostrando una mejora consistente en las métricas principales hasta la última época. Los datos de entrenamiento indican un proceso de aprendizaje estable y efectivo.
+### Métricas Finales (Época 398)
 
-### Métricas Finales (Época 90)
-
-- **Precisión**: 98.952%
-- **Recall**: 94.381%
-- **mAP50**: 97.297%
-- **mAP50-95**: 89.387%
+- **Precisión**: 98.486%
+- **Recall**: 95.420%
+- **mAP50**: 97.065%
+- **mAP50-95**: 94.582%
 
 ### Evolución del Entrenamiento
 
-1. **Fase inicial** (Épocas 1-20):
-   - Precisión mejoró de 46.132% a 79.593%
-   - Recall aumentó de 45.550% a 72.410%
-   - mAP50 creció de 39.095% a 81.246%
-   - mAP50-95 aumentó de 20.553% a 55.507%
-   - Learning rate: 0.000546557 → 0.0013186
+1. **Fase inicial** (Épocas 1-100):
+   - Precisión mejoró de 42.591% a 97.281%
+   - Recall aumentó de 47.393% a 93.057%
+   - mAP50 creció de 40.422% a 96.918%
+   - mAP50-95 aumentó de 21.513% a 84.769%
+   - Learning rate inicial: 0.000546557
 
-2. **Fase intermedia** (Épocas 21-60):
-   - Precisión superó el 90% consistentemente
-   - Recall se mantuvo por encima del 85%
-   - mAP50 alcanzó valores superiores al 95%
-   - mAP50-95 se estabilizó por encima del 80%
-   - Learning rate: 0.00130026 → 0.000585117
-   - Notable reducción en pérdidas de clasificación
-
-3. **Fase final** (Épocas 61-90):
-   - Precisión máxima de 98.952%
+2. **Fase intermedia** (Épocas 101-250):
+   - Precisión consistentemente sobre 97%
    - Recall estable por encima del 94%
-   - mAP50 consistentemente sobre 97%
-   - mAP50-95 alcanzó 89.387%
-   - Learning rate final: 3.5007e-05
-   - Estabilización perfecta de todas las métricas
+   - mAP50 mantenido sobre 96%
+   - mAP50-95 superó el 90%
+   - Learning rate: 0.00128437 → 0.000503206
+   - Estabilización notable en todas las métricas
 
-### Pérdidas (Evolución época 1 → 90)
+3. **Fase final** (Épocas 251-398):
+   - Precisión máxima de 98.486%
+   - Recall alcanzó 95.420%
+   - mAP50 alcanzó 97.065%
+   - mAP50-95 llegó a 94.582%
+   - Learning rate final: 0.000114438
+   - Refinamiento fino de todas las métricas
 
-- Box loss: 1.28366 → 0.35897 (72% de reducción)
-- Clasificación loss: 2.29821 → 0.24620 (89% de reducción)
-- DFL loss: 1.44941 → 0.86589 (40% de reducción)
+### Pérdidas (Evolución época 1 → 398)
+
+- Box loss: 1.28516 → 0.26532 (79% de reducción)
+- Clasificación loss: 2.32056 → 0.20451 (91% de reducción)
+- DFL loss: 1.42982 → 0.86165 (40% de reducción)
 
 ## Visualización de Resultados
 

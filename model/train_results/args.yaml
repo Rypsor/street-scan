@@ -3,7 +3,7 @@ mode: train
 model: yolov8s.pt
 data: /kaggle/working/data_final_80_10_10.yaml
 epochs: 100
-time: 1
+time: 5
 patience: 50
 batch: -1
 imgsz: 640
