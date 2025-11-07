@@ -2,4 +2,11 @@ requests
 python-dotenv
 folium
 streamlit
+streamlit-folium
 ultralytics
+Pillow
+geopandas
+shapely
+numpy
+huggingface_hub
+torch
