@@ -83,3 +83,10 @@ El detector utiliza YOLOv8 entrenado para identificar:
 ## Licencia
 
 Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+## Enlaces
+### Imágenes de Medellín
+https://huggingface.co/datasets/Rypsor/calles-medellin
+
+### Imágenes usadas en el entrenamiento
+https://app.roboflow.com/workspace-h90hn/graf-fxodj-bbro0/4
