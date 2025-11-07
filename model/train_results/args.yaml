@@ -1,10 +1,10 @@
 task: detect
 mode: train
 model: yolov8s.pt
-data: /kaggle/working/corrected_data_2.yaml
+data: /kaggle/working/data_final_80_10_10.yaml
 epochs: 100
 time: 1
-patience: 100
+patience: 50
 batch: -1
 imgsz: 640
 save: true
@@ -13,7 +13,7 @@ cache: false
 device: null
 workers: 8
 project: /kaggle/working/
-name: train_run_2
+name: artistico_vandalico_train
 exist_ok: true
 pretrained: true
 optimizer: auto
@@ -25,7 +25,7 @@ rect: false
 cos_lr: false
 close_mosaic: 10
 resume: false
-amp: false
+amp: true
 fraction: 1.0
 profile: false
 freeze: null
@@ -103,4 +103,4 @@ auto_augment: randaugment
 erasing: 0.4
 cfg: null
 tracker: botsort.yaml
-save_dir: /kaggle/working/train_run_2
+save_dir: /kaggle/working/artistico_vandalico_train
