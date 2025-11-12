@@ -1,94 +1,84 @@
 # Street Scan 🗺️
 
-Aplicación web para detectar y visualizar graffiti en las calles de Medellín usando modelo YOLOv8 e imágenes geolocalizadas.
+A web application for detecting and visualizing graffiti on the streets of Medellín using a YOLOv8 model and geolocated images.
 
-prueba online: https://rypsor-street-scan-app-mawxkf.streamlit.app/
+Online demo: https://rypsor-street-scan-app-mawxkf.streamlit.app/
 
-## Requisitos del Sistema
+## System Requirements
 
-- Python 3.8 o superior
-- libgl1-mesa-glx (para OpenCV)
-- Acceso a internet (para descargar imágenes de Hugging Face)
+- Python 3.8 or higher
+- libgl1-mesa-glx (for OpenCV)
+- Internet access (to download images from Hugging Face)
 
-## Instalación
+## Installation
 
-1. Clona el repositorio:
+1. Clone the repository:
 
-```bash
 git clone https://github.com/Rypsor/street-scan.git
 cd street-scan
-```
 
-1. Crea un entorno virtual:
+2. Create a virtual environment:
 
-```bash
 python3 -m venv venv
 source venv/bin/activate  # Linux/macOS
-# venv\Scripts\activate  # Windows
-```
+# venv\Scripts\activate   # Windows
 
-1. Instala las dependencias:
+3. Install dependencies:
 
-```bash
 pip install -r requirements.txt
-```
 
-## Uso
+## Usage
 
-1. Inicia la aplicación:
+1. Start the application:
 
-```bash
 streamlit run app.py
-```
 
-1. En la interfaz web:
+2. In the web interface:
 
-   - Selecciona un área en el mapa
-   - Ajusta los umbrales de detección
-   - Elige cuántas imágenes procesar
-   - Haz clic en "Iniciar Análisis"
+- Select an area on the map
+- Adjust detection thresholds
+- Choose how many images to process
+- Click “Start Analysis”
 
-## Funcionalidades
+## Features
 
-- Detección de dos tipos de graffiti: artístico y vandálico
-- Visualización en mapa de las ubicaciones con detecciones
-- Galería de imágenes con las detecciones marcadas
-- Enlaces directos a Google Maps para cada ubicación
-- Selección de área mediante herramienta de dibujo
-- Muestreo aleatorio de imágenes del área seleccionada
+- Detection of two types of graffiti: artistic and vandalism
+- Map visualization of detection locations
+- Image gallery with marked detections
+- Direct links to Google Maps for each location
+- Area selection using a drawing tool
+- Random sampling of images from the selected area
 
-## Estructura del Proyecto
+## Project Structure
 
-```plaintext
 street-scan/
-├── app.py                 # Aplicación principal Streamlit
-├── requirements.txt       # Dependencias de Python
-├── packages.txt          # Dependencias del sistema
+├── app.py                 # Main Streamlit application
+├── requirements.txt       # Python dependencies
+├── packages.txt           # System dependencies
 ├── model/
-│   └── best.pt          # Modelo YOLOv8 entrenado
+│   └── best.pt            # Trained YOLOv8 model
 ├── imagenes_medellin/
-│   ├── metadata_muestra.json     # Metadatos de imágenes
-│   └── imagenes_muestreadas/     # Carpeta de imágenes
+│   ├── metadata_muestra.json     # Image metadata
+│   └── imagenes_muestreadas/     # Folder with sampled images
 └── mapas/
     ├── mapa_enumerado_bboxes.html
     └── mapa_rectangulo.html
-```
 
-## Modelo de IA
+## AI Model
 
-El detector utiliza YOLOv8 entrenado para identificar:
+The detector uses YOLOv8 trained to identify:
 
-- Graffiti artístico
-- Graffiti vandálico
+- Artistic graffiti
+- Vandalism graffiti
 
+## License
 
-## Licencia
+This project is licensed under the MIT License. See the LICENSE file for more details.
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+## Links
 
-## Enlaces
-### Imágenes de Medellín
+### Medellín Images
 https://huggingface.co/datasets/Rypsor/calles-medellin
 
-### Imágenes usadas en el entrenamiento
+### Training Images
 https://app.roboflow.com/workspace-h90hn/graf-fxodj-bbro0/4
