@@ -49,20 +49,6 @@ streamlit run app.py
 - Area selection using a drawing tool
 - Random sampling of images from the selected area
 
-## Project Structure
-
-street-scan/
-├── app.py                 # Main Streamlit application
-├── requirements.txt       # Python dependencies
-├── packages.txt           # System dependencies
-├── model/
-│   └── best.pt            # Trained YOLOv8 model
-├── imagenes_medellin/
-│   ├── metadata_muestra.json     # Image metadata
-│   └── imagenes_muestreadas/     # Folder with sampled images
-└── mapas/
-    ├── mapa_enumerado_bboxes.html
-    └── mapa_rectangulo.html
 
 ## AI Model
 
