@@ -1,4 +1,33 @@
+# Virtual environments
 .env
-.venv
+.venv/
+venv/
+venv_street_scan/
+
+# Temporary/debug files
+debug_output.txt
+debug_predict.py
+lista_bboxes.txt
 descarga_lista.jsonl
-imagenes_muestreadas
+imagenes_muestreadas/
+
+# Unused folders
+data/
+otros/
+mapas/
+resultados_area7/
+test-results/
+
+# Old/replaced files
+model_results.md
+informe.pdf
+medellin.geojson
+packages.txt
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Large model files (optional - uncomment if needed)
+# *.pt
+training/

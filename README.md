@@ -1,70 +1,163 @@
 # Street Scan 🗺️
 
-A web application for detecting and visualizing graffiti on the streets of Medellín using a YOLOv8 model and geolocated images.
+Sistema de detección, clasificación y búsqueda de graffiti urbano en las calles de Medellín utilizando visión por computadora y geolocalización.
 
-Online demo: https://rypsor-street-scan-app-mawxkf.streamlit.app/
+**Demo en línea:** https://rypsor-street-scan-app-mawxkf.streamlit.app/
 
-## System Requirements
+---
 
-- Python 3.8 or higher
-- libgl1-mesa-glx (for OpenCV)
-- Internet access (to download images from Hugging Face)
+## 📋 Descripción
 
-## Installation
+Este proyecto implementa un pipeline completo para:
 
-1. Clone the repository:
+1. **Detección de graffiti** en imágenes de Street View usando YOLOv8
+2. **Clasificación** entre graffiti artístico y vandálico
+3. **Búsqueda por similitud** visual usando embeddings
+4. **Visualización geoespacial** en mapas interactivos
 
+---
+
+## 🚀 Características
+
+- ✅ Detección de dos tipos de graffiti: **artístico** y **vandálico**
+- ✅ Precisión del modelo superior al **95%** (mAP@0.5: 0.966)
+- ✅ Búsqueda de graffitis similares con puntuaciones >0.93
+- ✅ Visualización en mapa con marcadores geolocalizados
+- ✅ Enlaces directos a Google Maps para cada ubicación
+- ✅ Interfaz web interactiva con Streamlit
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+street-scan/
+├── app.py                      # Aplicación Streamlit principal
+├── model/
+│   ├── best.pt                 # Modelo YOLOv8 entrenado
+│   └── test_results/           # Métricas y curvas de evaluación
+├── test_images/                # Imágenes de prueba
+│
+├── # Scripts de Entrenamiento
+├── entrenamiento-del-modelo.ipynb  # Notebook de entrenamiento
+├── merge_datasets.py           # Combinar datasets
+├── filter_training_images.py   # Filtrado de imágenes
+│
+├── # Scripts de Inferencia
+├── inference_script.py         # Detección en imágenes
+├── crop_graffiti.py            # Extracción de recortes
+│
+├── # Sistema de Embeddings
+├── generate_embeddings.py      # Generación de embeddings
+├── find_similar_graffiti.py    # Búsqueda por similitud
+├── research_embedding.py       # Experimentación
+│
+├── # Visualización
+├── visualize_map.py            # Mapa interactivo con Folium
+├── visualize_classes.py        # Distribución de clases
+│
+├── # Documentación
+├── INFORME_RESULTADOS.md       # Informe completo de resultados
+├── INFORME_RESULTADOS.pdf      # Versión PDF del informe
+└── README.md                   # Este archivo
+```
+
+---
+
+## 🛠️ Instalación
+
+### Requisitos del Sistema
+
+- Python 3.8 o superior
+- libgl1-mesa-glx (para OpenCV)
+
+### Pasos
+
+1. Clonar el repositorio:
+```bash
 git clone https://github.com/Rypsor/street-scan.git
 cd street-scan
+```
 
-2. Create a virtual environment:
-
+2. Crear entorno virtual:
+```bash
 python3 -m venv venv
 source venv/bin/activate  # Linux/macOS
 # venv\Scripts\activate   # Windows
+```
 
-3. Install dependencies:
-
+3. Instalar dependencias:
+```bash
 pip install -r requirements.txt
+```
 
-## Usage
+---
 
-1. Start the application:
+## 💻 Uso
 
+### Aplicación Web (Búsqueda por Similitud)
+
+```bash
 streamlit run app.py
+```
 
-2. In the web interface:
+1. Sube una imagen de graffiti
+2. Ajusta el umbral de confianza
+3. Obtén los 5 graffitis más similares con sus ubicaciones en el mapa
 
-- Select an area on the map
-- Adjust detection thresholds
-- Choose how many images to process
-- Click “Start Analysis”
+### Búsqueda por Línea de Comandos
 
-## Features
+```bash
+python find_similar_graffiti.py imagen_query.jpg --top_k 5
+```
 
-- Detection of two types of graffiti: artistic and vandalism
-- Map visualization of detection locations
-- Image gallery with marked detections
-- Direct links to Google Maps for each location
-- Area selection using a drawing tool
-- Random sampling of images from the selected area
+### Generar Embeddings
 
+```bash
+python generate_embeddings.py --database /ruta/a/imagenes --force
+```
 
-## AI Model
+### Ejecutar Inferencia
 
-The detector uses YOLOv8 trained to identify:
+```bash
+python inference_script.py --source /ruta/a/imagenes --output /ruta/salida
+```
 
-- Artistic graffiti
-- Vandalism graffiti
+---
 
-## License
+## 📊 Resultados del Modelo
 
-This project is licensed under the MIT License. See the LICENSE file for more details.
+| Métrica | Valor |
+|---------|-------|
+| mAP@0.5 | **0.966** |
+| F1 Score (óptimo) | **0.95** |
+| Umbral óptimo | 0.743 |
+| Precisión (artístico) | 0.980 |
+| Precisión (vandálico) | 0.952 |
 
-## Links
+Para más detalles, consulta el [Informe de Resultados](INFORME_RESULTADOS.md).
 
-### Medellín Images
-https://huggingface.co/datasets/Rypsor/calles-medellin
+---
 
-### Training Images
-https://app.roboflow.com/workspace-h90hn/graf-fxodj-bbro0/4
+## 🤖 Modelo de IA
+
+El detector usa **YOLOv8** entrenado para identificar:
+
+- 🎨 **Graffiti Artístico**: Murales, arte urbano, obras con valor estético
+- ⚠️ **Graffiti Vandálico**: Tags, firmas, marcas sin autorización
+
+---
+
+## 📄 Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT.
+
+---
+
+## 🔗 Enlaces
+
+| Recurso | URL |
+|---------|-----|
+| Demo en línea | https://rypsor-street-scan-app-mawxkf.streamlit.app/ |
+| Dataset Medellín | https://huggingface.co/datasets/Rypsor/calles-medellin |
+| Dataset Entrenamiento | https://app.roboflow.com/workspace-h90hn/graf-fxodj-bbro0/4 |

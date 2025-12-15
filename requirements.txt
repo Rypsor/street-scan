@@ -10,3 +10,5 @@ shapely
 numpy
 huggingface_hub
 torch
+opencv-python
+sahi

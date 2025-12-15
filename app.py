@@ -6,18 +6,22 @@ from ultralytics import YOLO
 from PIL import Image
 import random
 import torch
-from huggingface_hub import hf_hub_download, list_repo_files
+# apfrom huggingface_hub import hf_hub_download, list_repo_files
 import folium
 from streamlit_folium import st_folium
+import numpy as np
 
 # --- 1. Definición de Constantes y Rutas ---
 MODEL_PATH = 'model/best.pt' 
 HF_REPO_ID = "Rypsor/calles-medellin"
 HF_REPO_TYPE = "dataset"
 METADATA_FILENAME = "metadata_muestra.json" 
+EMBEDDINGS_PATH = "/media/samuel/SSD/medellin_panoramas_recortados/inferencia/crops_artistico/embeddings_cache.npz"
+IMAGES_DIR = "/media/samuel/SSD/medellin_panoramas_recortados/inferencia/crops_artistico"
+DETECTIONS_PATH = "/media/samuel/SSD/medellin_panoramas_recortados/inferencia/all_detections/detections_artistico.json" 
 
 # --- 2. Funciones de Carga (Sin cambios) ---
-@st.cache_resource
+# Eliminamos cache_resource para evitar problemas de estado entre ejecuciones
 def load_yolo_model(path):
     if not os.path.exists(path):
         st.error(f"Error: No se encontró el modelo en {path}.")
@@ -94,197 +98,199 @@ def initialize_session_state(class_names):
     if 'detection_counts' not in st.session_state:
         st.session_state.detection_counts = {name: 0 for name in class_names.values()}
 
+# --- Funciones de Carga Local ---
+@st.cache_data
+def load_embeddings(path):
+    if not os.path.exists(path):
+        return None, None
+    data = np.load(path)
+    return data['embeddings'], data['filenames']
+
+@st.cache_data
+def load_confidence_map(json_path):
+    if not os.path.exists(json_path):
+        return {}
+    try:
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        conf_map = {}
+        for i, item in enumerate(data):
+            conf_map[i] = item.get('score', 0.0)
+        return conf_map
+    except Exception as e:
+        st.error(f"Error loading confidence map: {e}")
+        return {}
+
 def main():
     st.title("🗺️ Detector de Graffiti con Geo-localización")
 
     # --- Iniciar la app ---
     model = load_yolo_model(MODEL_PATH)
-    metadata_list, map_center = get_synced_metadata_list(HF_REPO_ID, METADATA_FILENAME)
+    cached_embeddings, cached_filenames = load_embeddings(EMBEDDINGS_PATH)
+    confidence_map = load_confidence_map(DETECTIONS_PATH)
 
-    if model is None or metadata_list is None:
-        st.warning("La aplicación no puede iniciar. Fallo al cargar datos/modelo.")
-        return
+    if model is None:
+        st.error("No se pudo cargar el modelo YOLO.")
+        st.stop()
+
+    if cached_embeddings is None:
+        st.error(f"No se encontraron los embeddings en {EMBEDDINGS_PATH}. Ejecuta primero 'generate_embeddings.py'.")
+        st.stop()
+
+    # --- Sección de Búsqueda ---
+    uploaded_file = st.file_uploader("Sube una imagen (JPG/PNG)", type=["jpg", "jpeg", "png"])
+
+    if uploaded_file is not None:
+        # Mostrar imagen subida
+        uploaded_file.seek(0)
+        image = Image.open(uploaded_file).convert("RGB")
         
-    try:
-        class_names = model.names
-    except Exception:
-        class_names = {0: 'artistico', 1: 'vandalico'}
-    st.info(f"Modelo cargado. Clases detectadas: {class_names}")
-
-    initialize_session_state(class_names)
-
-    # --- Paso 1: Mostrar el Mapa de Selección ---
-    st.subheader("Paso 1: Selecciona un área en el mapa")
-    
-    col1_map, col2_map = st.columns([4, 1])
-    with col1_map:
-        st.info("Usa la herramienta (■) para dibujar un área. Dibuja de nuevo para cambiar.")
-    with col2_map:
-        if st.button("Limpiar Selección y Resultados"):
-            st.session_state.map_key += 1 
-            st.session_state.filtered_metadata = [] 
-            st.session_state.images_with_detections = [] 
-            st.session_state.locations_with_detections = [] 
-            st.session_state.detection_counts = {name: 0 for name in class_names.values()} 
-            st.rerun() 
-
-    m = folium.Map(location=map_center, zoom_start=12)
-    folium.plugins.Draw(
-        export=False,
-        draw_options={'polyline': False, 'polygon': False, 'circle': False, 'marker': False, 'circlemarker': False, 'rectangle': True}
-    ).add_to(m)
-
-    map_data = st_folium(m, key=str(st.session_state.map_key), width=700, height=500)
-
-    # --- Paso 2: Filtrar la lista de imágenes ---
-    if map_data.get('all_drawings') and len(map_data['all_drawings']) > 0:
-        last_drawing = map_data['all_drawings'][-1]
-        if last_drawing['geometry']['type'] == 'Polygon':
-            coords = last_drawing['geometry']['coordinates'][0]
-            lons = [point[0] for point in coords]
-            lats = [point[1] for point in coords]
-            bounds = {
-                '_southWest': {'lat': min(lats), 'lng': min(lons)},
-                '_northEast': {'lat': max(lats), 'lng': max(lons)}
-            }
-            
-            st.session_state.filtered_metadata = filter_metadata_by_bounds(metadata_list, bounds)
-            
-            st.session_state.images_with_detections = []
-            st.session_state.locations_with_detections = []
-            st.session_state.detection_counts = {name: 0 for name in class_names.values()}
-            
-            st.success(f"¡Área seleccionada! Se encontraron {len(st.session_state.filtered_metadata)} imágenes en esta zona.")
-    else:
-        st.session_state.filtered_metadata = metadata_list
-
-    total_available = len(st.session_state.filtered_metadata)
-    if total_available == 0:
-        st.warning("No hay imágenes en el área seleccionada para procesar.")
-    else:
-        st.info(f"Encontradas {total_available} imágenes válidas y sincronizadas en el área.")
-
-        # --- Paso 3: Configuración de Detección ---
-        st.subheader("Paso 2: Configura el análisis")
-        col1, col2 = st.columns(2)
+        col1, col2 = st.columns([1, 2])
         with col1:
-            conf_artistico = st.slider(f"Umbral para '{class_names[0]}'", 0.0, 1.0, 0.5, 0.05)
+            st.image(image, caption="Imagen Subida", use_container_width=True)
+        
         with col2:
-            conf_vandalico = st.slider(f"Umbral para '{class_names[1]}'", 0.0, 1.0, 0.3, 0.05)
-        
-        threshold_map = { 0: conf_artistico, 1: conf_vandalico }
-        PRE_FILTER_CONF = min(conf_artistico, conf_vandalico, 0.05)
-
-        max_to_process = st.number_input(
-            "Número de imágenes a procesar (al azar)",
-            min_value=1,
-            max_value=total_available,
-            value=min(20, total_available),
-            step=1,
-        )
-
-        # --- Paso 4: Botón de Inicio ---
-        st.subheader("Paso 3: Iniciar análisis")
-        if st.button("🚀 Iniciar Análisis de Imágenes"):
-            total_images = min(int(max_to_process), total_available)
-            items_to_process = random.sample(st.session_state.filtered_metadata, k=total_images)
-
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            st.info(f"Se procesarán {total_images} imágenes al azar del área seleccionada...")
+            st.write("### Configuración de Búsqueda")
+            # --- Threshold Slider ---
+            # Paso del slider ajustado a 0.02 como se planeó (el usuario pidió 0.2 pero para el rango 0.7-1.0 es muy grande)
+            min_db_conf = st.slider("Umbral de Confianza (Base de Datos)", 0.7, 1.0, 0.8, 0.02, help="Filtrar resultados que provienen de detecciones con baja confianza.")
             
-            st.session_state.images_with_detections = []
-            st.session_state.locations_with_detections = []
-            st.session_state.detection_counts = {name: 0 for name in class_names.values()}
-            unique_locations = set()
+            search_button = st.button("🔎 Buscar Similares", type="primary")
 
-            for i, item in enumerate(items_to_process):
-                filename = item['filename']
-                status_text.text(f"Procesando {i+1}/{total_images}: {filename} (Descargando...)")
-                image_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{filename}"
-                
+        if search_button:
+            with st.spinner("Analizando y buscando..."):
                 try:
-                    results = model.predict(image_url, classes=[0, 1], conf=PRE_FILTER_CONF, verbose=False, save = False)[0]
-                except Exception as e:
-                    st.warning(f"Error procesando {filename}. Saltando. Error: {e}")
-                    continue
-
-                if len(results.boxes) > 0:
-                    indices_to_keep = [] 
-                    for j in range(len(results.boxes)):
-                        box = results.boxes[j]
-                        class_id = int(box.cls[0])
-                        confidence = float(box.conf[0])
-                        if confidence >= threshold_map.get(class_id, 0.0):
-                            indices_to_keep.append(j)
-                    results.boxes = results.boxes[indices_to_keep]
-                
-                if len(results.boxes) > 0:
-                    try:
-                        detected_class_ids = results.boxes.cls.cpu().numpy()
-                        st.session_state.detection_counts[class_names[0]] += int((detected_class_ids == 0).sum())
-                        st.session_state.detection_counts[class_names[1]] += int((detected_class_ids == 1).sum())
-                    except Exception: pass
-                    lat = item.get('lat')
-                    lon = item.get('lon')
-                    if lat and lon:
-                        unique_locations.add((lat, lon))
-                        plotted_image_bgr = results.plot(pil=False) 
+                    # Generar embedding
+                    # Primero intentamos detectar y recortar el graffiti
+                    img_array = np.array(image)
+                    
+                    # Ejecutar inferencia en la imagen subida
+                    # Usar umbral bajo para DEBUG, luego filtraremos
+                    results_list = model.predict(image, conf=0.1, verbose=False)
+                    results = results_list[0]
+                    
+                    cropped_image = image # Por defecto usamos la original
+                    
+                    if hasattr(results, 'boxes') and len(results.boxes) > 0:
+                        # Filtrar solo clase 'artistico' (ID 0) Y confianza > 0.5
+                        artistico_boxes = [
+                            box for box in results.boxes 
+                            if int(box.cls[0]) == 0 and float(box.conf[0]) >= 0.5
+                        ]
                         
-                        # --- ¡CAMBIO 1! ---
-                        # Guardamos (filename, image, lat, lon) en lugar de solo (filename, image)
-                        st.session_state.images_with_detections.append((filename, plotted_image_bgr, lat, lon))
-                        # --------------------
+                        if artistico_boxes:
+                            # Encontrar la caja con mayor confianza
+                            best_box = max(artistico_boxes, key=lambda x: x.conf[0])
+                            x1, y1, x2, y2 = map(int, best_box.xyxy[0])
+                            
+                            # Recortar
+                            cropped_image = image.crop((x1, y1, x2, y2))
+                            with col1:
+                                st.image(cropped_image, caption=f"Recorte Automático (Conf: {float(best_box.conf[0]):.2f})", use_container_width=True)
+                            
+                            # Actualizar array para el embedding
+                            img_array = np.array(cropped_image)
+                        else:
+                            st.warning("No se detectó ningún graffiti 'artístico' con confianza > 0.5. Usando imagen completa.")
+                    else:
+                        st.warning("No se detectó ningún objeto con confianza > 0.5. Usando imagen completa.")
+                    
+                    query_embedding = model.embed(img_array)
+                    
+                    if isinstance(query_embedding, list):
+                        query_embedding = query_embedding[0]
+                    if isinstance(query_embedding, torch.Tensor):
+                        query_embedding = query_embedding.cpu().numpy()
+                    
+                    query_embedding = query_embedding.flatten()
+                    
+                    # Calcular similitud
+                    query_norm = query_embedding / np.linalg.norm(query_embedding)
+                    db_norms = np.linalg.norm(cached_embeddings, axis=1, keepdims=True)
+                    normalized_db = cached_embeddings / db_norms
+                    similarities = np.dot(normalized_db, query_norm)
+                    
+                    # Filter by confidence
+                    import re
+                    valid_indices = []
+                    
+                    for idx, fname in enumerate(cached_filenames):
+                        # Extract index from filename: ..._det{i}.jpg
+                        match = re.search(r"_det(\d+)\.", fname)
+                        if match:
+                            det_idx = int(match.group(1))
+                            conf = confidence_map.get(det_idx, 0.0)
+                            if conf >= min_db_conf:
+                                valid_indices.append(idx)
+                        else:
+                            # If no index found, include it
+                            valid_indices.append(idx)
+                    
+                    if not valid_indices:
+                        st.warning(f"No hay imágenes en la base de datos con confianza >= {min_db_conf}.")
+                    else:
+                        # Filter similarities
+                        filtered_similarities = similarities[valid_indices]
+                        filtered_indices = np.array(valid_indices)
+                        
+                        # Top 5 from filtered
+                        top_k = min(5, len(filtered_indices))
+                        # Get indices in the filtered array
+                        top_k_local_indices = np.argsort(filtered_similarities)[-top_k:][::-1]
+                        # Map back to original indices
+                        top_indices = filtered_indices[top_k_local_indices]
 
-                progress_bar.progress((i + 1) / total_images)
+                        st.subheader("Resultados Similares")
+                        st.divider()
+                        
+                        cols = st.columns(top_k)
+                        map_data = [] # Initialize map_data here
+                        
+                        for i, idx in enumerate(top_indices):
+                            score = similarities[idx]
+                            fname = cached_filenames[idx]
+                            img_path = os.path.join(IMAGES_DIR, fname)
+                            
+                            # Get original confidence
+                            match = re.search(r"_det(\d+)\.", fname)
+                            orig_conf = 0.0
+                            if match:
+                                orig_conf = confidence_map.get(int(match.group(1)), 0.0)
+                            
+                            # Parsear coordenadas del nombre del archivo
+                            # Formato esperado: crop_LAT_LON_ID.jpg
+                            lat, lon = None, None
+                            try:
+                                parts = fname.split('_')
+                                if len(parts) >= 3:
+                                    lat = float(parts[1])
+                                    lon = float(parts[2])
+                                    map_data.append({'lat': lat, 'lon': lon, 'name': fname, 'score': score})
+                            except Exception:
+                                pass
+                            
+                            with cols[i]:
+                                if os.path.exists(img_path):
+                                    st.image(img_path, use_container_width=True)
+                                    st.markdown(f"**Similitud:** {score:.2f}")
+                                    st.markdown(f"**Confianza:** {orig_conf:.2f}")
+                                    if lat and lon:
+                                        st.markdown(f"[📍 Ver en Google Maps](https://www.google.com/maps?q={lat},{lon})")
+                                        st.caption(f"{lat:.5f}, {lon:.5f}")
+                                else:
+                                    st.warning(f"Imagen no encontrada: {fname}")
 
-            st.session_state.locations_with_detections = [{'lat': lat, 'lon': lon} for lat, lon in unique_locations]
-            status_text.empty()
-            progress_bar.empty()
-            st.success("¡Análisis completado!")
+                        # Mostrar mapa si hay coordenadas
+                        if map_data:
+                            st.subheader("📍 Ubicación de los Graffitis Similares")
+                            df_map = pd.DataFrame(map_data)
+                            st.map(df_map, zoom=12, use_container_width=True)
+                                    
 
-    # --- Mostrar Resultados ---
-    
-    total_instances = sum(st.session_state.detection_counts.values())
-
-    if total_instances > 0:
-        st.subheader("Resumen de Detecciones (Instancias)")
-        col1, col2 = st.columns(2)
-        col1.metric(f"Graffiti {class_names[0].capitalize()}", f"{st.session_state.detection_counts[class_names[0]]} instancias")
-        col2.metric(f"Graffiti {class_names[1].capitalize()}", f"{st.session_state.detection_counts[class_names[1]]} instancias")
-        
-    if st.session_state.locations_with_detections:
-        df_locations = pd.DataFrame(st.session_state.locations_with_detections)
-        st.subheader("Mapa de Detecciones de Graffiti (en el área)")
-        st.map(df_locations, zoom=11, use_container_width=True)
-    
-
-    # --- ¡CAMBIO 2! ---
-    if st.session_state.images_with_detections:
-        st.subheader("Galería de Detecciones")
-        with st.expander("Ver todas las imágenes con detecciones"):
-            
-            # Desempaquetamos los 4 valores que guardamos
-            for filename, image, lat, lon in st.session_state.images_with_detections:
-                st.image(image, caption=filename, use_column_width=True, channels="BGR")
-                
-                # Mostramos las coordenadas
-                st.caption(f"Coordenadas: {lat}, {lon}")
-                
-                # Creamos el enlace a Google Maps
-                map_link = f"https://www.google.com/maps?q={lat},{lon}"
-                st.markdown(f"[Ver ubicación en Google Maps]({map_link})")
-                
-                st.divider() # Un separador visual
-    # --------------------
-
-    
-    if total_available > 0 and total_instances == 0:
-        last_button = st.session_state.get('st.button.last_used_label', '')
-        if last_button != "🚀 Iniciar Análisis de Imágenes" and last_button != "Limpiar Selección y Resultados":
-            st.info("Usa los controles de arriba para iniciar un análisis.")
-        elif last_button == "🚀 Iniciar Análisis de Imágenes":
-            st.info("No se encontraron detecciones en la última búsqueda.")
+                except Exception as e:
+                    st.error(f"Error durante la búsqueda: {e}")
+                    import traceback
+                    st.text(traceback.format_exc())
 
 
 # --- Punto de entrada para ejecutar el script ---
